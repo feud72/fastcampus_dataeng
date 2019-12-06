@@ -1,0 +1,16 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+flake8 = "*"
+ipython = "*"
+black = "==19.10b0"
+
+[packages]
+pymysql = "*"
+requests = "*"
+
+[requires]
+python_version = ">=3.7.*"

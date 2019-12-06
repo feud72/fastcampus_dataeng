@@ -5,12 +5,19 @@ import json
 import logging
 import time
 
-json_data = open("./api_key.json").read()
+secret_data = open("./secret.json").read()
 
-client_data = json.loads(json_data)
+client_data = json.loads(secret_data)["client_data"]
+db_data = json.loads(secret_data)["db_data"]
 
 client_id = client_data["client_id"]
 client_secret = client_data["client_secret"]
+
+host = db_data["host"]
+port = db_data["port"]
+username = db_data["username"]
+database = db_data["database"]
+password = db_data["password"]
 
 
 def main():
