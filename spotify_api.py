@@ -5,6 +5,7 @@ import json
 import logging
 import time
 import pymysql
+import pprint
 
 secret_data = open("./secret.json").read()
 
@@ -37,19 +38,6 @@ def main():
         logging.error("could not connect to RDS")
         sys.exit(1)
 
-    cursor.execute("SHOW TABLES")
-    print(cursor.fetchall())
-
-    query = "INSERT INTO artist_genres (artist_id, genre) VALUES ('{}', '{}')".format(
-        "2345", "hiphop"
-    )
-    cursor.execute(query)
-    conn.commit()
-
-    sys.exit(0)
-
-    print("success")
-
     headers = get_headers(client_id, client_secret)
 
     params = {"q": "BTS", "type": "artist", "limit": "5"}
@@ -61,6 +49,12 @@ def main():
     except Exception:
         logging.error(r.text)
         sys.exit(1)
+
+    raw = json.loads(r.text)
+
+    pprint.pp(raw["artists"])
+
+    sys.exit(0)
 
     if r.status_code != 200:
         logging.error(json.loads(r.text))
