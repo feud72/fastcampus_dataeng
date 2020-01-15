@@ -5,7 +5,6 @@ import json
 import logging
 import time
 import pymysql
-import pprint
 
 secret_data = open("./secret.json").read()
 
@@ -51,8 +50,34 @@ def main():
         sys.exit(1)
 
     raw = json.loads(r.text)
+    #    print(raw["artists"]["items"][0].keys())
+    artist_raw = raw["artists"]["items"][0]
 
-    pprint.pp(raw["artists"])
+    if artist_raw["name"] == params["q"]:
+        artist = {
+            "id": artist_raw["id"],
+            "name": artist_raw["name"],
+            "followers": artist_raw["followers"]["total"],
+            "popularity": artist_raw["popularity"],
+            "url": artist_raw["external_urls"]["spotify"],
+            "image_url": artist_raw["images"][0]["url"],
+        }
+
+    query = """
+    INSERT INTO artists (id, name, followers, popularity, url, image_url)
+    VALUES ('{0}', '{1}', {2}, {3}, '{4}', '{5}')
+    ON DUPLICATE KEY UPDATE id='{0}', name='{1}', followers={2}, popularity={3}, url='{4}', image_url='{5}'
+    """.format(
+        artist["id"],
+        artist["name"],
+        artist["followers"],
+        artist["popularity"],
+        artist["url"],
+        artist["image_url"],
+    )
+
+    cursor.execute(query)
+    conn.commit()
 
     sys.exit(0)
 
