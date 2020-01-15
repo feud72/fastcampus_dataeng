@@ -40,6 +40,14 @@ def main():
     cursor.execute("SHOW TABLES")
     print(cursor.fetchall())
 
+    query = "INSERT INTO artist_genres (artist_id, genre) VALUES ('{}', '{}')".format(
+        "2345", "hiphop"
+    )
+    cursor.execute(query)
+    conn.commit()
+
+    sys.exit(0)
+
     print("success")
 
     headers = get_headers(client_id, client_secret)
