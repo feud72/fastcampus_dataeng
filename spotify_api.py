@@ -3,10 +3,7 @@ import requests
 import base64
 import json
 import logging
-import time
 import pymysql
-import csv
-import pprint
 
 secret_data = open("./secret.json").read()
 
@@ -85,14 +82,24 @@ def main():
 
     artist_batch = [artists[i : i + 50] for i in range(0, len(artists), 50)]
 
+    artist_genres = []
+
     for i in artist_batch:
         ids = ",".join(i)
         URL = "https://api.spotify.com/v1/artists/?ids={}".format(ids)
 
         r = requests.get(URL, headers=headers)
         raw = json.loads(r.text)
-        pprint.pp(raw)
-        sys.exit(0)
+
+        for artist in raw["artists"]:
+            for genre in artist["genres"]:
+                artist_genres.append({"artist_id": artist["id"], "genre": genre})
+
+    for data in artist_genres:
+        insert_row(cursor, data, "artist_genres")
+
+    conn.commit()
+    sys.exit(0)
 
     #    if r.status_code != 200:
     #        logging.error(json.loads(r.text))
