@@ -50,33 +50,39 @@ def main():
         sys.exit(1)
 
     raw = json.loads(r.text)
-    #    print(raw["artists"]["items"][0].keys())
+
+    artist = {}
+
     artist_raw = raw["artists"]["items"][0]
 
     if artist_raw["name"] == params["q"]:
-        artist = {
-            "id": artist_raw["id"],
-            "name": artist_raw["name"],
-            "followers": artist_raw["followers"]["total"],
-            "popularity": artist_raw["popularity"],
-            "url": artist_raw["external_urls"]["spotify"],
-            "image_url": artist_raw["images"][0]["url"],
-        }
+        artist.update(
+            {
+                "id": artist_raw["id"],
+                "name": artist_raw["name"],
+                "followers": artist_raw["followers"]["total"],
+                "popularity": artist_raw["popularity"],
+                "url": artist_raw["external_urls"]["spotify"],
+                "image_url": artist_raw["images"][0]["url"],
+            }
+        )
 
-    query = """
-    INSERT INTO artists (id, name, followers, popularity, url, image_url)
-    VALUES ('{0}', '{1}', {2}, {3}, '{4}', '{5}')
-    ON DUPLICATE KEY UPDATE id='{0}', name='{1}', followers={2}, popularity={3}, url='{4}', image_url='{5}'
-    """.format(
-        artist["id"],
-        artist["name"],
-        artist["followers"],
-        artist["popularity"],
-        artist["url"],
-        artist["image_url"],
-    )
+    #    query = """
+    #    INSERT INTO artists (id, name, followers, popularity, url, image_url)
+    #    VALUES ('{0}', '{1}', {2}, {3}, '{4}', '{5}')
+    #    ON DUPLICATE KEY UPDATE id='{0}', name='{1}', followers={2}, popularity={3}, url='{4}', image_url='{5}'
+    #    """.format(
+    #        artist["id"],
+    #        artist["name"],
+    #        artist["followers"],
+    #        artist["popularity"],
+    #        artist["url"],
+    #        artist["image_url"],
+    #    )
+    #
+    #    cursor.execute(query)
 
-    cursor.execute(query)
+    insert_row(cursor, artist, "artists")
     conn.commit()
 
     sys.exit(0)
@@ -143,6 +149,19 @@ def get_headers(client_id, client_secret):
     headers = {"Authorization": f"Bearer {access_token}"}
 
     return headers
+
+
+def insert_row(cursor, data, table):
+    placeholders = ", ".join(["%s"] * len(data))
+    columns = ", ".join(data.keys())
+    key_placeholders = ", ".join(["{0}=%s".format(k) for k in data.keys()])
+    sql = "INSERT INTO %s ( %s ) VALUES ( %s ) ON DUPLICATE KEY UPDATE %s" % (
+        table,
+        columns,
+        placeholders,
+        key_placeholders,
+    )
+    cursor.execute(sql, list(data.values()) * 2)
 
 
 if __name__ == "__main__":
