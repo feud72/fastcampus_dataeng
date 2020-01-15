@@ -6,6 +6,7 @@ import logging
 import time
 import pymysql
 import csv
+import pprint
 
 secret_data = open("./secret.json").read()
 
@@ -42,57 +43,72 @@ def main():
 
     # Spotify Search API
 
+    #    artists = []
+    #
+    #    with open("artist_list.csv") as f:
+    #        raw = csv.reader(f)
+    #        for row in raw:
+    #            artists.append(row[0])
+    #
+    #    for a in artists:
+    #        params = {"q": a, "type": "artist", "limit": "1"}
+    #        r = requests.get(
+    #            "https://api.spotify.com/v1/search", params=params, headers=headers
+    #        )
+    #        raw = json.loads(r.text)
+    #        artist = {}
+    #        try:
+    #            artist_raw = raw["artists"]["items"][0]
+    #            if artist_raw["name"] == params["q"]:
+    #                artist.update(
+    #                    {
+    #                        "id": artist_raw["id"],
+    #                        "name": artist_raw["name"],
+    #                        "followers": artist_raw["followers"]["total"],
+    #                        "popularity": artist_raw["popularity"],
+    #                        "url": artist_raw["external_urls"]["spotify"],
+    #                        "image_url": artist_raw["images"][0]["url"],
+    #                    }
+    #                )
+    #                insert_row(cursor, artist, "artists")
+    #                print("Done. id:", artist_raw["id"])
+    #        except Exception:
+    #            logging.error("NO ITEMS FROM SEARCH API")
+    #            continue
+    #
+    #    conn.commit()
+
+    cursor.execute("SELECT id FROM artists")
     artists = []
+    for (id,) in cursor.fetchall():
+        artists.append(id)
 
-    with open("artist_list.csv") as f:
-        raw = csv.reader(f)
-        for row in raw:
-            artists.append(row[0])
+    artist_batch = [artists[i : i + 50] for i in range(0, len(artists), 50)]
 
-    for a in artists:
-        params = {"q": a, "type": "artist", "limit": "1"}
-        r = requests.get(
-            "https://api.spotify.com/v1/search", params=params, headers=headers
-        )
+    for i in artist_batch:
+        ids = ",".join(i)
+        URL = "https://api.spotify.com/v1/artists/?ids={}".format(ids)
+
+        r = requests.get(URL, headers=headers)
         raw = json.loads(r.text)
-        artist = {}
-        try:
-            artist_raw = raw["artists"]["items"][0]
-            if artist_raw["name"] == params["q"]:
-                artist.update(
-                    {
-                        "id": artist_raw["id"],
-                        "name": artist_raw["name"],
-                        "followers": artist_raw["followers"]["total"],
-                        "popularity": artist_raw["popularity"],
-                        "url": artist_raw["external_urls"]["spotify"],
-                        "image_url": artist_raw["images"][0]["url"],
-                    }
-                )
-                insert_row(cursor, artist, "artists")
-                print("Done. id:", artist_raw["id"])
-        except Exception:
-            logging.error("NO ITEMS FROM SEARCH API")
-            continue
+        pprint.pp(raw)
+        sys.exit(0)
 
-    conn.commit()
-    sys.exit(0)
-
-    if r.status_code != 200:
-        logging.error(json.loads(r.text))
-        if r.status_code == 429:
-            retry_after = json.loads(r.headers)["Retry-After"]
-            time.sleep(int(retry_after))
-            r = requests.get(
-                "https://api.spotify.com/v1/search", params=params, headers=headers
-            )
-        elif r.status_code == 401:
-            headers = get_headers(client_id, client_secret)
-            r = requests.get(
-                "https://api.spotify.com/v1/search", params=params, headers=headers
-            )
-        else:
-            sys.exit(1)
+    #    if r.status_code != 200:
+    #        logging.error(json.loads(r.text))
+    #        if r.status_code == 429:
+    #            retry_after = json.loads(r.headers)["Retry-After"]
+    #            time.sleep(int(retry_after))
+    #            r = requests.get(
+    #                "https://api.spotify.com/v1/search", params=params, headers=headers
+    #            )
+    #        elif r.status_code == 401:
+    #            headers = get_headers(client_id, client_secret)
+    #            r = requests.get(
+    #                "https://api.spotify.com/v1/search", params=params, headers=headers
+    #            )
+    #        else:
+    #            sys.exit(1)
 
     # Get BTS' Albums
 
