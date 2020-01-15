@@ -5,6 +5,7 @@ import json
 import logging
 import time
 import pymysql
+import csv
 
 secret_data = open("./secret.json").read()
 
@@ -39,52 +40,42 @@ def main():
 
     headers = get_headers(client_id, client_secret)
 
-    params = {"q": "BTS", "type": "artist", "limit": "5"}
+    # Spotify Search API
 
-    try:
+    artists = []
+
+    with open("artist_list.csv") as f:
+        raw = csv.reader(f)
+        for row in raw:
+            artists.append(row[0])
+
+    for a in artists:
+        params = {"q": a, "type": "artist", "limit": "1"}
         r = requests.get(
             "https://api.spotify.com/v1/search", params=params, headers=headers
         )
-    except Exception:
-        logging.error(r.text)
-        sys.exit(1)
+        raw = json.loads(r.text)
+        artist = {}
+        try:
+            artist_raw = raw["artists"]["items"][0]
+            if artist_raw["name"] == params["q"]:
+                artist.update(
+                    {
+                        "id": artist_raw["id"],
+                        "name": artist_raw["name"],
+                        "followers": artist_raw["followers"]["total"],
+                        "popularity": artist_raw["popularity"],
+                        "url": artist_raw["external_urls"]["spotify"],
+                        "image_url": artist_raw["images"][0]["url"],
+                    }
+                )
+                insert_row(cursor, artist, "artists")
+                print("Done. id:", artist_raw["id"])
+        except Exception:
+            logging.error("NO ITEMS FROM SEARCH API")
+            continue
 
-    raw = json.loads(r.text)
-
-    artist = {}
-
-    artist_raw = raw["artists"]["items"][0]
-
-    if artist_raw["name"] == params["q"]:
-        artist.update(
-            {
-                "id": artist_raw["id"],
-                "name": artist_raw["name"],
-                "followers": artist_raw["followers"]["total"],
-                "popularity": artist_raw["popularity"],
-                "url": artist_raw["external_urls"]["spotify"],
-                "image_url": artist_raw["images"][0]["url"],
-            }
-        )
-
-    #    query = """
-    #    INSERT INTO artists (id, name, followers, popularity, url, image_url)
-    #    VALUES ('{0}', '{1}', {2}, {3}, '{4}', '{5}')
-    #    ON DUPLICATE KEY UPDATE id='{0}', name='{1}', followers={2}, popularity={3}, url='{4}', image_url='{5}'
-    #    """.format(
-    #        artist["id"],
-    #        artist["name"],
-    #        artist["followers"],
-    #        artist["popularity"],
-    #        artist["url"],
-    #        artist["image_url"],
-    #    )
-    #
-    #    cursor.execute(query)
-
-    insert_row(cursor, artist, "artists")
     conn.commit()
-
     sys.exit(0)
 
     if r.status_code != 200:
