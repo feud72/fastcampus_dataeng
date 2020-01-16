@@ -1,6 +1,9 @@
 import sys
 import logging
+import pprint
+
 import boto3
+from boto3.dynamodb.conditions import Key, Attr
 
 
 def main():
@@ -16,11 +19,12 @@ def main():
 
     table = dynamodb.Table("top_tracks")
 
-    response = table.get_item(
-        Key={"artist_id": "00FQb4jTyendYWaN8pK0wa", "id": "0Oqc0kKFsQ6MhFOLBNZIGX"}
+    response = table.query(
+        KeyConditionExpression=Key("artist_id").eq("00FQb4jTyendYWaN8pK0wa"),
+        FilterExpression=Attr("popularity").gt(80),
     )
 
-    print(response)
+    pprint.pp(response["Items"])
 
 
 if __name__ == "__main__":
