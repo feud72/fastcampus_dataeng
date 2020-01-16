@@ -6,6 +6,9 @@ import requests
 import boto3
 import pymysql
 from datetime import datetime
+import pandas as pd
+import jsonpath
+
 
 secret_data = open("./secret.json").read()
 
@@ -40,22 +43,70 @@ def main():
 
     headers = get_headers(client_id, client_secret)
 
-    cursor.execute("SELECT id FROM artists")
+    cursor.execute("SELECT id FROM artists LIMIT 10")
 
-    dt = datetime.utcnow().strftime("%Y-%m-%d")
-    print(dt)
-    sys.exit(0)
+    top_track_keys = {
+        "id": "id",
+        "name": "name",
+        "popularity": "popularity",
+        "external_url": "external_urls.spotify",
+    }
+
+    top_tracks = []
 
     for (id,) in cursor.fetchall():
-        pass
+        URL = "https://api.spotify.com/v1/artists/{}/top-tracks".format(id)
+        params = {"country": "US"}
+        r = requests.get(URL, params=params, headers=headers)
+        raw = json.loads(r.text)
 
-    with open("top_tracks.json", "w") as f:
-        for i in top_tracks:
-            json.dump(i, f)
-            f.write(os.linesep)
+        for i in raw["tracks"]:
+            top_track = {}
+            for k, v in top_track_keys.items():
+                top_track.update({k: jsonpath.jsonpath(i, v)})
+                top_track.update({"artist_id": id})
+                top_tracks.append(top_track)
+                print("top-track append: ", top_track)
 
+    track_ids = [i["id"][0] for i in top_tracks]
+
+    top_tracks = pd.DataFrame(raw)
+    top_tracks.to_parquet("top-tracks.parquet", engine="pyarrow", compressions="snappy")
+
+    dt = datetime.utcnow().strftime("%Y-%m-%d")
     s3 = boto3.resource("s3")
-    object = s3.Object("spotify-artists", "dt={}/top-tracks.json".format(dt))
+    object = s3.Object(
+        "feud72-spotify-artists", "top-tracks/dt={}/top-tracks.parquet".format(dt)
+    )
+    with open("top-tracks.parquet", "rb") as data:
+        object.put(Body=data)
+        print("put data: top-tracks.parquet")
+
+    tracks_batch = [track_ids[i : i + 100] for i in range(0, len(track_ids), 100)]
+
+    audio_features = []
+    for i in tracks_batch:
+        ids = ",".join(i)
+        URL = "https://api.spotify.com/v1/audio-features/?ids={}".format(ids)
+
+        r = requests.get(URL, headers=headers)
+        raw = json.loads(r.text)
+        audio_features.extend(raw["audio_features"])
+        print("audio_features append")
+
+    audio_features = pd.DataFrame(audio_features)
+    audio_features.to_parquet(
+        "audio-features.parquet", engine="pyarrow", compressions="snappy"
+    )
+    dt = datetime.utcnow().strftime("%Y-%m-%d")
+    s3 = boto3.resource("s3")
+    object = s3.Object(
+        "feud72-spotify-artists",
+        "audio-features/dt={}/audio-features.parquet".format(dt),
+    )
+    with open("audio-features.parquet", "rb") as data:
+        object.put(Body=data)
+        print("put data: top-tracks.parquet")
 
 
 def get_headers(client_id, client_secret):
