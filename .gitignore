@@ -105,3 +105,4 @@ venv.bak/
 
 *.py.swp
 secret.json
+.pem
